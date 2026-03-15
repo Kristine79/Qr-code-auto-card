@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: cards
+    // Document ID: auto-generated
+    // Fields:
+    //   - ownerId: string (required, immutable) - UID of the owner
+    //   - carModel: string (required) - Make and model of the car
+    //   - plateNumber: string (required) - License plate number
+    //   - ownerName: string (required) - Name of the owner
+    //   - phone1: string (required) - Primary contact phone
+    //   - phone2: string (optional) - Secondary contact phone
+    //   - email: string (optional) - Contact email
+    //   - telegram: string (optional) - Telegram username
+    //   - whatsapp: string (optional) - WhatsApp number
+    //   - showText: bool (required) - Whether to show custom text
+    //   - text: string (optional) - Custom message text
+    //   - showContact: bool (required) - Whether to show contact info
+    //   - quickButtons: list (required) - Enabled quick action buttons
+    //   - tgNotificationId: string (optional) - Telegram ID for alerts
+    //   - emailNotification: string (optional) - Email for alerts
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: notifications
+    // Document ID: auto-generated
+    // Fields:
+    //   - cardId: string (required, immutable) - ID of the car card
+    //   - type: string (required, immutable) - Type of alert
+    //   - timestamp: timestamp (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isCardOwner(cardData) {
+      return isAuthenticated() && request.auth.uid == cardData.ownerId;
+    }
+
+    function isValidCard(data) {
+      return data.keys().hasAll(['ownerId', 'carModel', 'plateNumber', 'ownerName', 'phone1', 'showText', 'showContact', 'quickButtons', 'createdAt']) &&
+             data.ownerId is string &&
+             data.carModel is string && data.carModel.size() > 0 && data.carModel.size() < 100 &&
+             data.plateNumber is string && data.plateNumber.size() > 0 && data.plateNumber.size() < 20 &&
+             data.ownerName is string && data.ownerName.size() > 0 && data.ownerName.size() < 100 &&
+             data.phone1 is string && data.phone1.size() > 0 && data.phone1.size() < 20 &&
+             data.showText is bool &&
+             data.showContact is bool &&
+             data.quickButtons is list &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['cardId', 'type', 'timestamp']) &&
+             data.cardId is string &&
+             data.type in ['evacuation', 'damage', 'vandalism', 'message'] &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /cards/{cardId} {
+      // Anyone can read a card to see the contact info
+      allow read: if true;
+      
+      // Authenticated users can create their own cards
+      allow create: if isAuthenticated() && 
+                      isValidCard(request.resource.data) && 
+                      request.resource.data.ownerId == request.auth.uid;
+      
+      // Only the owner can update or delete their card
+      allow update: if isCardOwner(resource.data) && 
+                      isValidCard(request.resource.data) &&
+                      request.resource.data.ownerId == resource.data.ownerId &&
+                      request.resource.data.createdAt == resource.data.createdAt;
+      
+      allow delete: if isCardOwner(resource.data);
+    }
+
+    match /notifications/{notificationId} {
+      // Anyone can send a notification (scanned QR action)
+      allow create: if isValidNotification(request.resource.data);
+      
+      // Only the card owner can read notifications for their card
+      allow read: if isAuthenticated() && 
+                    get(/databases/$(database)/documents/cards/$(resource.data.cardId)).data.ownerId == request.auth.uid;
+      
+      // Notifications are immutable
+      allow update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

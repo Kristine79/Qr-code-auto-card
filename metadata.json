@@ -1,0 +1,5 @@
+{
+  "name": "CarQR - Автовизитка",
+  "description": "Создание QR-визиток для автомобилей с уведомлениями в Telegram",
+  "requestFramePermissions": []
+}

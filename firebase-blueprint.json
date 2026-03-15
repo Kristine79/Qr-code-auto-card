@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "CarCard": {
+      "title": "Car Business Card",
+      "description": "Information for a car QR business card",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "description": "UID of the owner" },
+        "carModel": { "type": "string", "description": "Make and model of the car" },
+        "plateNumber": { "type": "string", "description": "License plate number" },
+        "ownerName": { "type": "string", "description": "Name of the owner" },
+        "phone1": { "type": "string", "description": "Primary contact phone" },
+        "phone2": { "type": "string", "description": "Secondary contact phone" },
+        "email": { "type": "string", "description": "Contact email" },
+        "telegram": { "type": "string", "description": "Telegram username" },
+        "whatsapp": { "type": "string", "description": "WhatsApp number" },
+        "showText": { "type": "boolean", "description": "Whether to show custom text" },
+        "text": { "type": "string", "description": "Custom message text" },
+        "showContact": { "type": "boolean", "description": "Whether to show contact info" },
+        "quickButtons": { "type": "array", "items": { "type": "string" }, "description": "Enabled quick action buttons" },
+        "tgNotificationId": { "type": "string", "description": "Telegram ID for alerts" },
+        "emailNotification": { "type": "string", "description": "Email for alerts" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["ownerId", "carModel", "plateNumber", "ownerName", "phone1"]
+    },
+    "Notification": {
+      "title": "Alert Notification",
+      "description": "An alert sent to a car owner",
+      "type": "object",
+      "properties": {
+        "cardId": { "type": "string", "description": "ID of the car card" },
+        "type": { "type": "string", "description": "Type of alert (evacuation, damage, etc.)" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the alert was sent" }
+      },
+      "required": ["cardId", "type", "timestamp"]
+    }
+  },
+  "firestore": {
+    "cards/{cardId}": {
+      "schema": "CarCard",
+      "description": "Collection of car business cards"
+    },
+    "notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "History of alerts sent"
+    }
+  }
+}
