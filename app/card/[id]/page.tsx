@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { db, OperationType, handleFirestoreError } from '@/lib/firebase';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { decodeCardData, type CarCardData } from '@/lib/utils';
 import { 
   Car, 
   Phone, 
@@ -15,28 +14,10 @@ import {
   Info,
   QrCode,
   Download,
-  Share2,
   User
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuth } from '@/components/FirebaseProvider';
-
-interface CarCardData {
-  carModel: string;
-  plateNumber: string;
-  ownerName: string;
-  phone1: string;
-  phone2?: string;
-  email?: string;
-  telegram?: string;
-  whatsapp?: string;
-  showText: boolean;
-  text?: string;
-  showContact: boolean;
-  quickButtons: string[];
-  ownerId: string;
-}
 
 const BUTTON_CONFIG: Record<string, { label: string, icon: any, color: string }> = {
   evacuation: { label: 'Эвакуация', icon: AlertTriangle, color: 'bg-orange-500' },
@@ -48,43 +29,18 @@ const BUTTON_CONFIG: Record<string, { label: string, icon: any, color: string }>
 export default function PublicCardView() {
   const params = useParams();
   const id = params.id as string;
-  const { user } = useAuth();
-  const [card, setCard] = useState<CarCardData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [alertSent, setAlertSent] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
 
-  useEffect(() => {
-    async function fetchCard() {
-      if (!id) return;
-      try {
-        const docRef = doc(db, 'cards', id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setCard(docSnap.data() as CarCardData);
-        }
-      } catch (error) {
-        handleFirestoreError(error, OperationType.GET, `cards/${id}`);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchCard();
+  const card = React.useMemo(() => {
+    if (!id) return null;
+    return decodeCardData(id);
   }, [id]);
 
-  const sendAlert = async (type: string) => {
-    if (!id) return;
-    try {
-      await addDoc(collection(db, 'notifications'), {
-        cardId: id,
-        type,
-        timestamp: serverTimestamp(),
-      });
-      setAlertSent(type);
-      setTimeout(() => setAlertSent(null), 3000);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'notifications');
-    }
+  const sendAlert = (type: string) => {
+    // In stateless mode, we just show a success message
+    setAlertSent(type);
+    setTimeout(() => setAlertSent(null), 3000);
   };
 
   const downloadQR = () => {
@@ -107,14 +63,6 @@ export default function PublicCardView() {
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
-
   if (!card) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 text-center">
@@ -122,32 +70,29 @@ export default function PublicCardView() {
           <Info className="w-8 h-8 text-gray-400" />
         </div>
         <h1 className="text-xl font-bold text-gray-900">Визитка не найдена</h1>
-        <p className="text-gray-500 mt-2">Возможно, она была удалена владельцем.</p>
+        <p className="text-gray-500 mt-2">Возможно, ссылка повреждена или неверна.</p>
       </div>
     );
   }
 
-  const isOwner = user?.uid === card.ownerId;
   const cardUrl = typeof window !== 'undefined' ? `${window.location.origin}/card/${id}` : '';
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       {/* Hero Section */}
-      <div className="bg-gray-900 text-white pt-12 pb-24 px-4 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-red-600 to-rose-800 text-white pt-12 pb-24 px-4 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
         <div className="max-w-md mx-auto relative z-10">
           <div className="flex justify-between items-start mb-6">
             <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
               <Car className="w-8 h-8 text-white" />
             </div>
-            {isOwner && (
-              <button 
-                onClick={() => setShowQR(true)}
-                className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20 hover:bg-white/20 transition-all"
-              >
-                <QrCode className="w-6 h-6" />
-              </button>
-            )}
+            <button 
+              onClick={() => setShowQR(true)}
+              className="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20 hover:bg-white/20 transition-all"
+            >
+              <QrCode className="w-6 h-6" />
+            </button>
           </div>
           <h1 className="text-3xl font-bold mb-2">{card.carModel}</h1>
           <div className="inline-block bg-white text-gray-900 px-4 py-1 rounded-lg font-mono font-bold text-xl uppercase tracking-widest shadow-lg">
@@ -317,7 +262,7 @@ export default function PublicCardView() {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={downloadQR}
-                  className="flex items-center justify-center gap-2 bg-gray-900 text-white py-3 px-4 rounded-2xl font-bold hover:bg-gray-800 transition-all active:scale-95"
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-700 text-white py-3 px-4 rounded-2xl font-bold hover:from-red-700 hover:to-rose-800 transition-all active:scale-95"
                 >
                   <Download className="w-4 h-4" />
                   Скачать

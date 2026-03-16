@@ -29,6 +29,7 @@ service cloud.firestore {
     // Document ID: auto-generated
     // Fields:
     //   - cardId: string (required, immutable) - ID of the car card
+    //   - ownerId: string (required, immutable) - UID of the card owner
     //   - type: string (required, immutable) - Type of alert
     //   - timestamp: timestamp (required, immutable)
     //
@@ -63,8 +64,9 @@ service cloud.firestore {
     }
 
     function isValidNotification(data) {
-      return data.keys().hasAll(['cardId', 'type', 'timestamp']) &&
+      return data.keys().hasAll(['cardId', 'ownerId', 'type', 'timestamp']) &&
              data.cardId is string &&
+             data.ownerId is string &&
              data.type in ['evacuation', 'damage', 'vandalism', 'message'] &&
              data.timestamp is timestamp;
     }
@@ -96,8 +98,7 @@ service cloud.firestore {
       allow create: if isValidNotification(request.resource.data);
       
       // Only the card owner can read notifications for their card
-      allow read: if isAuthenticated() && 
-                    get(/databases/$(database)/documents/cards/$(resource.data.cardId)).data.ownerId == request.auth.uid;
+      allow read: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
       
       // Notifications are immutable
       allow update, delete: if false;

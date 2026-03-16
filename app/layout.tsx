@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { FirebaseProvider } from '@/components/FirebaseProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] });
@@ -16,9 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru">
       <body className={inter.className} suppressHydrationWarning>
         <ErrorBoundary>
-          <FirebaseProvider>
-            {children}
-          </FirebaseProvider>
+          {children}
         </ErrorBoundary>
       </body>
     </html>
