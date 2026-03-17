@@ -41,8 +41,23 @@ export default function PublicCardView() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
-    // Automatic notification removed as per user request for direct link
-  }, []);
+    
+    /* 
+    // Automatic notification via Telegram if enabled
+    if (card?.notifyScan && card.telegramChatId) {
+      const message = `🔔 <b>CarQR:</b> Ваш код отсканирован!\n\n🚗 Автомобиль: <b>${card.carModel}</b>\n🔢 Госномер: <code>${card.plateNumber}</code>\n\nКто-то просматривает вашу визитку прямо сейчас.`;
+      
+      fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: card.telegramChatId,
+          message: message
+        })
+      }).catch(err => console.error('Notification error:', err));
+    }
+    */
+  }, [card, id]);
 
   const sendAlert = (type: string) => {
     // Show local success message
@@ -196,18 +211,6 @@ export default function PublicCardView() {
                 </div>
               </a>
 
-              {card.phone2 && (
-                <a href={`tel:${card.phone2}`} className="flex items-center gap-4 group">
-                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                    <Phone className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase font-bold">Телефон #2</p>
-                    <p className="font-bold text-gray-900">{card.phone2}</p>
-                  </div>
-                </a>
-              )}
-
               {card.telegram && (
                 <a href={`https://t.me/${card.telegram.replace('@', '')}`} target="_blank" className="flex items-center gap-4 group">
                   <div className="w-10 h-10 bg-sky-50 rounded-xl flex items-center justify-center group-hover:bg-sky-100 transition-colors">
@@ -228,18 +231,6 @@ export default function PublicCardView() {
                   <div>
                     <p className="text-xs text-gray-400 uppercase font-bold">WhatsApp</p>
                     <p className="font-bold text-gray-900">{card.whatsapp}</p>
-                  </div>
-                </a>
-              )}
-
-              {card.email && (
-                <a href={`mailto:${card.email}`} className="flex items-center gap-4 group">
-                  <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-                    <Mail className="w-5 h-5 text-purple-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase font-bold">Email</p>
-                    <p className="font-bold text-gray-900 truncate max-w-[200px]">{card.email}</p>
                   </div>
                 </a>
               )}
