@@ -48,21 +48,17 @@ export default function Home() {
     text: 'Мешаю? Напиши мне! 📲\nЯ прибегу через минуту. Пожалуйста, не вызывай эвакуатор, я уже бегу 🏃',
     showContact: true,
     quickButtons: ['evacuation', 'damage', 'message'],
-    notifyScan: false,
-    telegramChatId: '',
   });
 
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [botStatus, setBotStatus] = useState<{ hasToken: boolean; appUrl: string } | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     instruction: false,
     car: false,
     owner: true,
     socials: false,
     message: false,
-    notifications: false,
     buttons: true
   });
 
@@ -70,26 +66,9 @@ export default function Home() {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const [isTelegram, setIsTelegram] = useState(false);
-
   useEffect(() => {
-    // Detect Telegram WebApp
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-      const tg = (window as any).Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-      setTimeout(() => setIsTelegram(true), 0);
-    }
-
-    // Check bot status
-    fetch('/api/telegram/status')
-      .then(res => res.json())
-      .then(data => setBotStatus(data))
-      .catch(() => {});
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -408,146 +387,6 @@ export default function Home() {
               </AnimatePresence>
             </div>
 
-            {/* Notifications 
-            <div className="space-y-3 border-b border-gray-50 pb-5">
-              <button 
-                type="button"
-                onClick={() => toggleSection('notifications')}
-                className="w-full text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between group text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4" />
-                  Оповещения
-                </div>
-                {expandedSections.notifications ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-
-              <AnimatePresence>
-                {expandedSections.notifications && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="pt-2 space-y-4">
-                      <label className="flex items-center gap-3 cursor-pointer group">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            name="notifyScan"
-                            checked={formData.notifyScan || false}
-                            onChange={(e) => setFormData(prev => ({ ...prev, notifyScan: e.target.checked }))}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-800"></div>
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 group-hover:text-gray-900 transition-colors">
-                          Уведомлять о сканировании кода
-                        </span>
-                      </label>
-                      
-                      {formData.notifyScan && (
-                        <div className="space-y-4">
-                          {botStatus && !botStatus.hasToken && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-2">
-                              <div className="flex gap-3">
-                                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
-                                <div>
-                                  <p className="text-xs font-bold text-amber-800 mb-1">Токен бота не настроен</p>
-                                  <p className="text-[10px] text-amber-700 leading-relaxed">
-                                    Для работы уведомлений необходимо добавить <b>TELEGRAM_BOT_TOKEN</b> в секреты (Settings -> Secrets).
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="space-y-1.5">
-                            <label className="text-sm font-bold text-gray-700 ml-1 flex items-center gap-2">
-                              Telegram Chat ID
-                              <a 
-                                href="https://t.me/userinfobot" 
-                                target="_blank" 
-                                className="text-[10px] text-blue-500 hover:underline font-normal"
-                              >
-                                (узнать свой ID)
-                              </a>
-                            </label>
-                            {!isTelegram && (
-                              <div className="flex flex-wrap gap-2">
-                                <input
-                                  name="telegramChatId"
-                                  value={formData.telegramChatId || ''}
-                                  onChange={handleInputChange}
-                                  placeholder="Например: 123456789"
-                                  className="flex-1 min-w-[200px] bg-white border border-gray-200 rounded-2xl px-5 py-2.5 focus:ring-2 focus:ring-red-800 transition-all text-sm"
-                                />
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      try {
-                                        const res = await fetch('/api/telegram/setup', { method: 'POST' });
-                                        const data = await res.json();
-                                        if (data.success) alert('Бот успешно настроен! Теперь он будет отвечать на сообщения.');
-                                        else alert('Ошибка настройки: ' + data.error);
-                                      } catch (e) {
-                                        alert('Ошибка при настройке');
-                                      }
-                                    }}
-                                    className="bg-blue-50 text-blue-600 px-4 py-2.5 rounded-2xl text-xs font-bold hover:bg-blue-100 transition-all border border-blue-100"
-                                  >
-                                    Настроить бота
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      if (!formData.telegramChatId) return alert('Введите Chat ID');
-                                      try {
-                                        const res = await fetch('/api/notify', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({
-                                            chatId: formData.telegramChatId,
-                                            message: '🔔 <b>CarQR:</b> Проверка связи! Бот работает корректно.'
-                                          })
-                                        });
-                                        const data = await res.json();
-                                        if (data.success) alert('Тестовое сообщение отправлено!');
-                                        else alert('Ошибка: ' + data.error);
-                                      } catch (e) {
-                                        alert('Ошибка при отправке');
-                                      }
-                                    }}
-                                    className="bg-gray-100 text-gray-600 px-4 py-2.5 rounded-2xl text-xs font-bold hover:bg-gray-200 transition-all"
-                                  >
-                                    Тест
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {!isTelegram && (
-                            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-                              <p className="text-xs text-blue-700 leading-relaxed">
-                                <span className="font-bold">Как запустить бота:</span><br/>
-                                1. Нажмите кнопку <b>«Настроить бота»</b> выше (это привяжет бота к сайту).<br/>
-                                2. Напишите боту в Telegram команду <code className="bg-blue-100 px-1 rounded">/start</code> — он пришлет ваш <b>Chat ID</b>.<br/>
-                                3. Введите ID в поле выше и нажмите «Тест».
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            */}
-
             {/* Quick Buttons */}
             <div className="space-y-3">
               <button 
@@ -615,8 +454,6 @@ export default function Home() {
                 text: 'Мешаю? Напиши мне! 📲\nЯ прибегу через минуту. Пожалуйста, не вызывай эвакуатор, я уже бегу 🏃',
                 showContact: true,
                 quickButtons: ['evacuation', 'damage', 'message'],
-                notifyScan: false,
-                telegramChatId: '',
               })}
               className="flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors text-sm font-medium py-2 px-4 rounded-xl hover:bg-gray-50"
             >

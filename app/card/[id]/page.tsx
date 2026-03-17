@@ -41,22 +41,6 @@ export default function PublicCardView() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
-    
-    /* 
-    // Automatic notification via Telegram if enabled
-    if (card?.notifyScan && card.telegramChatId) {
-      const message = `🔔 <b>CarQR:</b> Ваш код отсканирован!\n\n🚗 Автомобиль: <b>${card.carModel}</b>\n🔢 Госномер: <code>${card.plateNumber}</code>\n\nКто-то просматривает вашу визитку прямо сейчас.`;
-      
-      fetch('/api/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: card.telegramChatId,
-          message: message
-        })
-      }).catch(err => console.error('Notification error:', err));
-    }
-    */
   }, [card, id]);
 
   const sendAlert = (type: string) => {

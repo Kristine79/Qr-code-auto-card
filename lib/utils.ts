@@ -15,8 +15,6 @@ export interface CarCardData {
   text?: string;
   showContact: boolean;
   quickButtons: string[];
-  notifyScan?: boolean;
-  telegramChatId?: string;
 }
 
 /**
