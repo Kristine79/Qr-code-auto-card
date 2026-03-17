@@ -22,9 +22,20 @@ export interface CarCardData {
  */
 export function encodeCardData(data: CarCardData): string {
   try {
-    const json = JSON.stringify(data);
-    // Use btoa for base64 encoding, making it URL safe by replacing + and /
-    const base64 = btoa(unescape(encodeURIComponent(json)))
+    // Create a copy and remove empty strings to keep the QR code small
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => {
+        if (v === '' || v === null || v === undefined) return false;
+        if (Array.isArray(v) && v.length === 0) return false;
+        return true;
+      })
+    );
+    
+    const json = JSON.stringify(cleanData);
+    // Use a more robust way to handle UTF-8 for base64
+    const bytes = new TextEncoder().encode(json);
+    const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+    const base64 = btoa(binString)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
@@ -45,7 +56,9 @@ export function decodeCardData(encoded: string): CarCardData | null {
     while (base64.length % 4) {
       base64 += '=';
     }
-    const json = decodeURIComponent(escape(atob(base64)));
+    const binString = atob(base64);
+    const bytes = Uint8Array.from(binString, (char) => char.charCodeAt(0));
+    const json = new TextDecoder().decode(bytes);
     return JSON.parse(json);
   } catch (e) {
     console.error('Decoding error:', e);

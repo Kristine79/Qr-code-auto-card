@@ -31,15 +31,30 @@ export default function PublicCardView() {
   const id = params.id as string;
   const [alertSent, setAlertSent] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const card = React.useMemo(() => {
     if (!id) return null;
     return decodeCardData(id);
   }, [id]);
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+    // Automatic notification removed as per user request for direct link
+  }, []);
+
   const sendAlert = (type: string) => {
-    // In stateless mode, we just show a success message
+    // Show local success message
     setAlertSent(type);
+    
+    // If Telegram username is present, we can open a direct chat with a pre-filled message
+    if (card?.telegram) {
+      const config = BUTTON_CONFIG[type];
+      const alertMessage = encodeURIComponent(`Здравствуйте! Я у вашего авто ${card.carModel} (${card.plateNumber}). Сигнал: ${config?.label || type}. Пожалуйста, выйдите.`);
+      window.open(`https://t.me/${card.telegram.replace('@', '')}?text=${alertMessage}`, '_blank');
+    }
+
     setTimeout(() => setAlertSent(null), 3000);
   };
 
@@ -77,10 +92,12 @@ export default function PublicCardView() {
 
   const cardUrl = typeof window !== 'undefined' ? `${window.location.origin}/card/${id}` : '';
 
+  if (!mounted) return null;
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
+    <div className="min-h-screen bg-gray-50 pb-12" suppressHydrationWarning>
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-red-600 to-rose-800 text-white pt-12 pb-24 px-4 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-red-800 to-rose-950 text-white pt-12 pb-24 px-4 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
         <div className="max-w-md mx-auto relative z-10">
           <div className="flex justify-between items-start mb-6">
@@ -229,7 +246,54 @@ export default function PublicCardView() {
             </div>
           </section>
         )}
+
+        {/* Quick Contact Buttons */}
+        <div className="grid grid-cols-1 gap-3">
+          {card.phone1 && (
+            <a 
+              href={`tel:${card.phone1}`}
+              className="flex items-center justify-center gap-3 bg-red-800 text-white py-4 rounded-2xl font-bold hover:bg-red-900 transition-all active:scale-95 shadow-lg"
+            >
+              <Phone className="w-5 h-5" />
+              Позвонить владельцу
+            </a>
+          )}
+          {card.telegram && (
+            <a 
+              href={`https://t.me/${card.telegram.replace('@', '')}`}
+              target="_blank"
+              className="flex items-center justify-center gap-3 bg-[#229ED9] text-white py-4 rounded-2xl font-bold hover:bg-[#1c86b9] transition-all active:scale-95 shadow-lg"
+            >
+              <Send className="w-5 h-5" />
+              Написать в Telegram
+            </a>
+          )}
+        </div>
       </main>
+
+      <footer className="mt-12 mb-8 text-center space-y-4">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Разработка и поддержка</p>
+          <div className="flex items-center gap-4">
+            <a 
+              href="https://t.me/krisdev13" 
+              target="_blank" 
+              className="flex items-center gap-1.5 text-sm font-bold text-red-800 hover:text-red-900 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              @krisdev13
+            </a>
+            <a 
+              href="mailto:info@premiumwebsite.ru" 
+              className="flex items-center gap-1.5 text-sm font-bold text-red-800 hover:text-red-900 transition-colors"
+            >
+              <Mail className="w-4 h-4" />
+              info@premiumwebsite.ru
+            </a>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-400">© 2026 CarQR. Все права защищены.</p>
+      </footer>
 
       {/* QR Modal */}
       <AnimatePresence>
@@ -247,22 +311,27 @@ export default function PublicCardView() {
               className="bg-white rounded-[2.5rem] p-8 max-w-sm w-full text-center shadow-2xl"
             >
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Ваш QR-код</h2>
-              <p className="text-gray-500 text-sm mb-8">Распечатайте и положите под лобовое стекло</p>
+              <p className="text-gray-500 text-sm mb-6">Распечатайте и положите под лобовое стекло</p>
               
-              <div className="bg-gray-50 p-6 rounded-3xl inline-block mb-8 border border-gray-100">
+              <div className="bg-gray-50 p-6 rounded-3xl inline-block mb-6 border border-gray-100 w-full">
+                <p className="text-red-900 font-bold text-sm mb-4 leading-tight">
+                  Мешаю? Напиши мне! 📲<br/>
+                  Я прибегу через минуту. Пожалуйста, не вызывай эвакуатор, я уже бегу 🏃
+                </p>
                 <QRCodeSVG
                   id="qr-code-svg"
                   value={cardUrl}
-                  size={200}
-                  level="H"
+                  size={240}
+                  level="M"
                   includeMargin={true}
+                  className="mx-auto"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={downloadQR}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-rose-700 text-white py-3 px-4 rounded-2xl font-bold hover:from-red-700 hover:to-rose-800 transition-all active:scale-95"
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-800 to-rose-950 text-white py-3 px-4 rounded-2xl font-bold hover:from-red-900 hover:to-black transition-all active:scale-95"
                 >
                   <Download className="w-4 h-4" />
                   Скачать
