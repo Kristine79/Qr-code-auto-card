@@ -14,7 +14,8 @@ import {
   Info,
   QrCode,
   Download,
-  User
+  User,
+  Zap
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -47,11 +48,15 @@ export default function PublicCardView() {
     // Show local success message
     setAlertSent(type);
     
-    // If Telegram username is present, we can open a direct chat with a pre-filled message
+    const config = BUTTON_CONFIG[type];
+    
+    // Simple notification: Open Telegram with pre-filled message
     if (card?.telegram) {
-      const config = BUTTON_CONFIG[type];
       const alertMessage = encodeURIComponent(`Здравствуйте! Я у вашего авто ${card.carModel} (${card.plateNumber}). Сигнал: ${config?.label || type}. Пожалуйста, выйдите.`);
       window.open(`https://t.me/${card.telegram.replace('@', '')}?text=${alertMessage}`, '_blank');
+    } else if (card?.phone1) {
+      // If no telegram, maybe they want to call?
+      // window.location.href = `tel:${card.phone1}`;
     }
 
     setTimeout(() => setAlertSent(null), 3000);
@@ -63,7 +68,7 @@ export default function PublicCardView() {
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    const img = new Image();
+    const img = new window.Image();
     img.onload = () => {
       canvas.width = img.width;
       canvas.height = img.height;
@@ -94,13 +99,26 @@ export default function PublicCardView() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12" suppressHydrationWarning>
+    <div 
+      className="min-h-screen pb-12 transition-colors duration-500" 
+      style={{ 
+        backgroundColor: card.backgroundColor || '#f9fafb',
+        color: card.textColor || '#111827'
+      }}
+      suppressHydrationWarning
+    >
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-red-800 to-rose-950 text-white pt-12 pb-24 px-4 rounded-b-[3rem] shadow-2xl relative overflow-hidden">
+      <div 
+        className="pt-12 pb-24 px-4 rounded-b-[3rem] shadow-2xl relative overflow-hidden transition-all duration-500"
+        style={{ 
+          background: `linear-gradient(to bottom right, ${card.themeColor || '#991b1b'}, ${card.themeColor ? `${card.themeColor}dd` : '#4c0519'})`,
+          color: '#ffffff' // Hero text usually white for contrast
+        }}
+      >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
         <div className="max-w-md mx-auto relative z-10">
           <div className="flex justify-between items-start mb-6">
-            <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+            <div className="relative w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 overflow-hidden">
               <Car className="w-8 h-8 text-white" />
             </div>
             <button 
@@ -111,30 +129,16 @@ export default function PublicCardView() {
             </button>
           </div>
           <h1 className="text-3xl font-bold mb-2">{card.carModel}</h1>
-          <div className="inline-block bg-white text-gray-900 px-4 py-1 rounded-lg font-mono font-bold text-xl uppercase tracking-widest shadow-lg">
+          <div 
+            className="inline-block bg-white px-4 py-1 rounded-lg font-mono font-bold text-xl uppercase tracking-widest shadow-lg"
+            style={{ color: card.themeColor || '#111827' }}
+          >
             {card.plateNumber}
           </div>
         </div>
       </div>
 
       <main className="max-w-md mx-auto px-4 -mt-12 space-y-6">
-        {/* Custom Text */}
-        {card.showText && card.text && (
-          <motion.section 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100"
-          >
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-red-800" />
-              Сообщение от владельца
-            </h3>
-            <p className="text-gray-900 text-lg leading-relaxed italic font-medium">
-              &quot;{card.text}&quot;
-            </p>
-          </motion.section>
-        )}
-
         {/* Quick Actions */}
         {card.quickButtons.length > 0 && (
           <section className="grid grid-cols-2 gap-4">
@@ -153,8 +157,9 @@ export default function PublicCardView() {
                   className={`relative overflow-hidden flex flex-col items-center justify-center min-h-[100px] p-4 rounded-3xl shadow-lg transition-all border-2 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 ${
                     isSent 
                       ? 'bg-green-600 border-green-600 text-white ring-green-600' 
-                      : `${config.color} border-transparent text-white ring-offset-white`
+                      : `border-transparent text-white ring-offset-white`
                   }`}
+                  style={!isSent ? { backgroundColor: card.themeColor || '#991b1b' } : {}}
                 >
                   <Icon className={`w-8 h-8 mb-2 ${isSent ? 'animate-bounce' : ''}`} />
                   <span className="font-bold text-xs uppercase tracking-tight text-center">
@@ -169,8 +174,11 @@ export default function PublicCardView() {
         {/* Contact Info */}
         {card.showContact && (
           <section className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 space-y-6">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-              <Phone className="w-4 h-4 text-red-800" />
+            <h3 
+              className="text-sm font-bold uppercase tracking-wider flex items-center gap-2"
+              style={{ color: card.textColor || '#111827' }}
+            >
+              <Phone className="w-4 h-4" style={{ color: card.themeColor || '#991b1b' }} />
               Контакты владельца
             </h3>
             
@@ -180,8 +188,14 @@ export default function PublicCardView() {
                   <User className="w-6 h-6 text-gray-900" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-900 uppercase font-bold tracking-wider">Владелец</p>
-                  <p className="font-bold text-gray-900 text-lg">{card.ownerName}</p>
+                  <p className="text-xs uppercase font-bold tracking-wider opacity-70" style={{ color: card.textColor || '#111827' }}>Владелец</p>
+                  <p className="font-bold text-lg" style={{ color: card.textColor || '#111827' }}>{card.ownerName}</p>
+                  {card.telegram && (
+                    <p className="text-sm font-medium text-sky-600 flex items-center gap-1 mt-0.5">
+                      <Send className="w-3 h-3" />
+                      @{card.telegram.replace('@', '')}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -190,8 +204,8 @@ export default function PublicCardView() {
                   <Phone className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-900 uppercase font-bold tracking-wider">Телефон</p>
-                  <p className="font-bold text-gray-900 text-lg">{card.phone1}</p>
+                  <p className="text-xs uppercase font-bold tracking-wider opacity-70" style={{ color: card.textColor || '#111827' }}>Телефон</p>
+                  <p className="font-bold text-lg" style={{ color: card.textColor || '#111827' }}>{card.phone1}</p>
                 </div>
               </a>
 
@@ -201,8 +215,8 @@ export default function PublicCardView() {
                     <Send className="w-6 h-6 text-sky-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-900 uppercase font-bold tracking-wider">Telegram</p>
-                    <p className="font-bold text-gray-900 text-lg">{card.telegram}</p>
+                    <p className="text-xs uppercase font-bold tracking-wider opacity-70" style={{ color: card.textColor || '#111827' }}>Telegram</p>
+                    <p className="font-bold text-lg" style={{ color: card.textColor || '#111827' }}>{card.telegram}</p>
                   </div>
                 </a>
               )}
@@ -213,10 +227,22 @@ export default function PublicCardView() {
                     <MessageSquare className="w-6 h-6 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-900 uppercase font-bold tracking-wider">WhatsApp</p>
-                    <p className="font-bold text-gray-900 text-lg">{card.whatsapp}</p>
+                    <p className="text-xs uppercase font-bold tracking-wider opacity-70" style={{ color: card.textColor || '#111827' }}>WhatsApp</p>
+                    <p className="font-bold text-lg" style={{ color: card.textColor || '#111827' }}>{card.whatsapp}</p>
                   </div>
                 </a>
+              )}
+
+              {card.max && (
+                <div className="flex items-center gap-4 group rounded-2xl p-1 -m-1">
+                  <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center shadow-sm">
+                    <Zap className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase font-bold tracking-wider opacity-70" style={{ color: card.textColor || '#111827' }}>Max</p>
+                    <p className="font-bold text-lg" style={{ color: card.textColor || '#111827' }}>{card.max}</p>
+                  </div>
+                </div>
               )}
             </div>
           </section>
@@ -227,7 +253,8 @@ export default function PublicCardView() {
           {card.phone1 && (
             <a 
               href={`tel:${card.phone1}`}
-              className="flex items-center justify-center gap-3 bg-red-800 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-red-900 transition-all active:scale-95 shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-800 focus-visible:ring-offset-2"
+              className="flex items-center justify-center gap-3 text-white py-5 rounded-[2rem] font-bold text-lg transition-all active:scale-95 shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2"
+              style={{ backgroundColor: card.themeColor || '#991b1b' }}
             >
               <Phone className="w-6 h-6" />
               Позвонить владельцу
@@ -289,18 +316,26 @@ export default function PublicCardView() {
               <p className="text-gray-700 text-sm mb-6">Распечатайте и положите под лобовое стекло</p>
               
               <div className="bg-gray-50 p-6 rounded-3xl inline-block mb-6 border border-gray-100 w-full">
-                <p className="text-red-950 font-black text-sm mb-4 leading-tight">
-                  Мешаю? Напиши мне! 📲<br/>
-                  Я прибегу через минуту. Пожалуйста, не вызывай эвакуатор, я уже бегу 🏃
-                </p>
-                <QRCodeSVG
-                  id="qr-code-svg"
-                  value={cardUrl}
-                  size={240}
-                  level="M"
-                  includeMargin={true}
-                  className="mx-auto"
-                />
+                {cardUrl.length > 2900 ? (
+                  <div className="flex flex-col items-center justify-center p-4 text-red-600 space-y-2">
+                    <AlertTriangle className="w-8 h-8" />
+                    <p className="text-xs font-bold uppercase">Данные слишком длинные</p>
+                  </div>
+                ) : (
+                  <QRCodeSVG
+                    id="qr-code-svg"
+                    value={cardUrl}
+                    size={280}
+                    level="L"
+                    includeMargin={true}
+                    className="mx-auto"
+                  />
+                )}
+                {card.qrText && (
+                  <p className="mt-4 text-xs font-bold text-gray-900 uppercase tracking-widest">
+                    {card.qrText}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
