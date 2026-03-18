@@ -185,6 +185,37 @@ export default function Home() {
     }, 500);
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      triggerVibration(50);
+      // Optional: show a toast or temporary success state
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const shareQR = async () => {
+    if (navigator.share && generatedUrl) {
+      try {
+        await navigator.share({
+          title: 'Мой CarQR',
+          text: `Свяжитесь со мной по поводу моего авто (${formData.plateNumber})`,
+          url: generatedUrl,
+        });
+      } catch (err) {
+        // Ignore AbortError (user canceled sharing)
+        if (err instanceof Error && err.name !== 'AbortError') {
+          console.error('Error sharing:', err);
+        }
+      }
+    } else {
+      // Fallback for browsers that don't support navigator.share
+      copyToClipboard(generatedUrl || '');
+      alert('Ссылка скопирована в буфер обмена');
+    }
+  };
+
   const downloadQR = () => {
     const svg = document.getElementById('qr-code-svg');
     if (!svg) return;
@@ -662,48 +693,63 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col bg-white"
           >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-8 max-w-sm w-full text-center shadow-2xl"
-            >
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Ваш QR-код готов!</h2>
-              <p className="text-gray-700 text-sm mb-6">Распечатайте его и положите под лобовое стекло</p>
-              
-              <div className="bg-gray-50 p-6 rounded-3xl inline-block mb-6 border border-gray-100 w-full">
-                <p className="text-red-950 font-black text-sm mb-4 leading-tight">
-                  Мешаю? Не грусти — напиши! 📲<br/>
-                  Отсканируй код, и я прибегу через минуту. Пожалуйста, не вызывай эвакуатор, я уже бегу 🏃
-                </p>
-                <QRCodeSVG
-                  id="qr-code-svg"
-                  value={generatedUrl}
-                  size={240}
-                  level="M"
-                  includeMargin={true}
-                  className="mx-auto"
-                />
-              </div>
+            {/* Header */}
+            <header className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">Ваш QR-код готов</h2>
+              <button 
+                onClick={() => setShowQR(false)}
+                className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Назад
+              </button>
+            </header>
 
-              <div className="grid grid-cols-1 gap-3">
-                <button
-                  onClick={downloadQR}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-red-800 to-rose-950 text-white py-4 px-4 rounded-2xl font-bold hover:from-red-900 hover:to-black transition-all active:scale-95 shadow-lg"
-                >
-                  <Download className="w-5 h-5" />
-                  Скачать изображение
-                </button>
-                <button
-                  onClick={() => setShowQR(false)}
-                  className="bg-gray-200 text-gray-800 py-4 px-4 rounded-2xl font-bold hover:bg-gray-300 transition-all active:scale-95"
-                >
-                  Закрыть
-                </button>
+            <div className="flex-1 overflow-y-auto px-6 py-8">
+              <div className="max-w-sm mx-auto space-y-8">
+                {/* Central Block (Focus) */}
+                <div className="text-center space-y-6">
+                  <div className="bg-gray-50 p-8 rounded-[3rem] inline-block border border-gray-100 w-full shadow-inner">
+                    <QRCodeSVG
+                      id="qr-code-svg"
+                      value={generatedUrl}
+                      size={260}
+                      level="M"
+                      includeMargin={true}
+                      className="mx-auto"
+                    />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="inline-block px-6 py-2 bg-gray-900 text-white rounded-xl font-mono text-xl font-bold tracking-[0.2em] uppercase">
+                      {formData.plateNumber}
+                    </div>
+                    <p className="text-gray-600 text-base leading-relaxed px-4">
+                      Наклейте этот код на лобовое стекло или панель приборов. Сканировав его, другие смогут связаться с вами.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Block */}
+                <div className="grid grid-cols-1 gap-4 pb-8">
+                  <button
+                    onClick={downloadQR}
+                    className="flex items-center justify-center gap-3 bg-gradient-to-r from-red-800 to-rose-950 text-white py-5 px-6 rounded-3xl font-bold hover:from-red-900 hover:to-black transition-all active:scale-95 shadow-xl shadow-red-900/10"
+                  >
+                    <Download className="w-6 h-6" />
+                    Сохранить QR-код в галерею
+                  </button>
+                  <button
+                    onClick={shareQR}
+                    className="flex items-center justify-center gap-3 bg-gray-100 text-gray-900 py-5 px-6 rounded-3xl font-bold hover:bg-gray-200 transition-all active:scale-95"
+                  >
+                    <Send className="w-6 h-6" />
+                    Поделиться QR-кодом
+                  </button>
+                </div>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
